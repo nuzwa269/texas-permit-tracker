@@ -39,13 +39,26 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PermitStatus | 'All'>('All');
 
-  // ── Auth check + initial fetch ────────────────────────────────
+  // ── Auth check + subscription guard + initial fetch ──────────
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         router.replace('/');
         return;
       }
+
+      // Check subscription status
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_subscribed')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.is_subscribed) {
+        router.replace('/pricing');
+        return;
+      }
+
       setUserId(user.id);
       setUserEmail(user.email ?? user.id);
 

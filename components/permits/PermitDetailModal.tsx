@@ -178,8 +178,7 @@ export function PermitDetailModal({
                       ${
                         isCurrent
                           ? 'bg-navy-700 text-white shadow-sm cursor-default'
-                          : 'bg-white border border-slate-300 text-slate-700
-                             hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed'
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed'
                       }`}
                   >
                     {s}

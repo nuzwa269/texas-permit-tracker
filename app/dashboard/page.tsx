@@ -9,8 +9,12 @@ import { PermitCard } from '@/components/permits/PermitCard';
 import { NewPermitModal } from '@/components/permits/NewPermitModal';
 import { PermitDetailModal } from '@/components/permits/PermitDetailModal';
 import { JurisdictionPortalDropdown } from '@/components/permits/JurisdictionPortalDropdown';
+import { TrialBanner } from '@/components/subscription/TrialBanner';
 import { getExpirationStatus } from '@/lib/utils/date';
 import type { Permit, PermitStatus } from '@/types/permit';
+
+// Starter plan permit limit (keep in sync with your LemonSqueezy product config)
+const STARTER_PERMIT_LIMIT = 10;
 
 const STATUS_OPTIONS: Array<PermitStatus | 'All'> = [
   'All',
@@ -25,29 +29,44 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // ── Auth state ────────────────────────────────────────────────
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId]       = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
 
+  // ── Subscription state ────────────────────────────────────────
+  const [isSubscribed, setIsSubscribed]   = useState<boolean>(false);
+  const [subChecked, setSubChecked]       = useState<boolean>(false);
+
   // ── Data state ────────────────────────────────────────────────
-  const [permits, setPermits] = useState<Permit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [permits, setPermits]         = useState<Permit[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [fetchError, setFetchError]   = useState<string | null>(null);
 
   // ── UI state ──────────────────────────────────────────────────
-  const [showNewModal, setShowNewModal] = useState(false);
+  const [showNewModal, setShowNewModal]   = useState(false);
   const [selectedPermit, setSelectedPermit] = useState<Permit | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PermitStatus | 'All'>('All');
+  const [searchQuery, setSearchQuery]     = useState('');
+  const [statusFilter, setStatusFilter]   = useState<PermitStatus | 'All'>('All');
 
   // ── Auth check + initial fetch ────────────────────────────────
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         router.replace('/');
         return;
       }
       setUserId(user.id);
       setUserEmail(user.email ?? user.id);
+
+      // ── Fetch subscription status from profiles table ──────────
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_subscribed')
+        .eq('id', user.id)
+        .single();
+
+      setIsSubscribed(profile?.is_subscribed ?? false);
+      setSubChecked(true);
+      // ─────────────────────────────────────────────────────────
 
       getPermits()
         .then(setPermits)
@@ -79,11 +98,19 @@ export default function DashboardPage() {
   }).length;
 
   const stats = {
-    total: permits.filter((p) => p.status !== 'Expired' && p.status !== 'Rejected').length,
-    pending: permits.filter((p) => p.status === 'Pending').length,
+    total:   permits.filter((p) => p.status !== 'Expired' && p.status !== 'Rejected').length,
+    pending:  permits.filter((p) => p.status === 'Pending').length,
     approved: permits.filter((p) => p.status === 'Approved').length,
-    delayed: permits.filter((p) => p.status === 'Delayed').length,
+    delayed:  permits.filter((p) => p.status === 'Delayed').length,
   };
+
+  // ── Paywall helper: can the user open the "New Permit" modal? ─
+  const trialLimitReached = !isSubscribed && permits.length >= STARTER_PERMIT_LIMIT;
+
+  function handleAddPermitClick() {
+    if (trialLimitReached) return; // button is grayed out; guard just in case
+    setShowNewModal(true);
+  }
 
   // ── Handlers ──────────────────────────────────────────────────
   function handleCreated(permit: Permit) {
@@ -111,6 +138,15 @@ export default function DashboardPage() {
   // ── Main render ───────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* ── Trial Mode banner (shown when not subscribed) ── */}
+      {subChecked && !isSubscribed && (
+        <TrialBanner
+          permitCount={permits.length}
+          starterLimit={STARTER_PERMIT_LIMIT}
+        />
+      )}
+
       {/* ── Header ── */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -124,13 +160,35 @@ export default function DashboardPage() {
             {/* Header actions */}
             <div className="flex items-center gap-3 shrink-0">
               <JurisdictionPortalDropdown />
-              <button
-                onClick={() => setShowNewModal(true)}
-                className="btn-primary flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                New Permit
-              </button>
+
+              {/* ── Paywall: gray out button if trial limit reached ── */}
+              {trialLimitReached ? (
+                <div className="relative group">
+                  <button
+                    disabled
+                    aria-disabled="true"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-200 text-slate-400 font-semibold text-sm cursor-not-allowed select-none"
+                  >
+                    <Plus className="w-5 h-5" />
+                    New Permit
+                  </button>
+                  {/* Tooltip */}
+                  <div
+                    role="tooltip"
+                    className="absolute -bottom-10 right-0 whitespace-nowrap bg-slate-800 text-white text-xs rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"
+                  >
+                    Upgrade to Pro for unlimited permits
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleAddPermitClick}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Permit
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -248,9 +306,9 @@ export default function DashboardPage() {
                 ? 'No permits match your current filters.'
                 : 'Get started by creating your first permit.'}
             </p>
-            {!searchQuery && statusFilter === 'All' && (
+            {!searchQuery && statusFilter === 'All' && !trialLimitReached && (
               <button
-                onClick={() => setShowNewModal(true)}
+                onClick={handleAddPermitClick}
                 className="btn-primary inline-flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />

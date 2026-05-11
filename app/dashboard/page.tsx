@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Loader2, FileText, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Loader2, FileText, AlertTriangle, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { getPermits } from '@/lib/supabase/permits';
 import { PermitCard } from '@/components/permits/PermitCard';
@@ -38,6 +38,8 @@ export default function DashboardPage() {
   const [selectedPermit, setSelectedPermit] = useState<Permit | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PermitStatus | 'All'>('All');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
 
   // ── Auth check + subscription guard + initial fetch ──────────
   useEffect(() => {
@@ -50,14 +52,12 @@ export default function DashboardPage() {
       // Check subscription status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_subscribed')
+        .select('is_subscribed, subscription_status')
         .eq('id', user.id)
         .single();
 
-      if (!profile?.is_subscribed) {
-        router.replace('/pricing');
-        return;
-      }
+      setIsSubscribed(Boolean(profile?.is_subscribed));
+      setSubscriptionStatus(profile?.subscription_status ?? 'inactive');
 
       setUserId(user.id);
       setUserEmail(user.email ?? user.id);
@@ -138,8 +138,11 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 shrink-0">
               <JurisdictionPortalDropdown />
               <button
-                onClick={() => setShowNewModal(true)}
-                className="btn-primary flex items-center gap-2"
+                onClick={() => (isSubscribed ? setShowNewModal(true) : router.push('/pricing'))}
+                title={isSubscribed ? undefined : 'Upgrade to add permits'}
+                className={`btn-primary flex items-center gap-2 ${
+                  isSubscribed ? '' : 'opacity-60 cursor-not-allowed'
+                }`}
               >
                 <Plus className="w-5 h-5" />
                 New Permit
@@ -151,6 +154,23 @@ export default function DashboardPage() {
 
       {/* ── Main Content ── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!isSubscribed && (
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Zap className="w-5 h-5 text-amber-600 shrink-0" />
+              <p className="text-sm font-medium text-amber-800">
+                You&apos;re in Trial Mode. Upgrade to unlock full access.
+                <span className="sr-only"> Current subscription status: {subscriptionStatus}.</span>
+              </p>
+            </div>
+            <a
+              href="/pricing"
+              className="text-sm font-semibold text-amber-700 hover:text-amber-800 whitespace-nowrap"
+            >
+              View Plans →
+            </a>
+          </div>
+        )}
 
         {/* Fetch error */}
         {fetchError && (
@@ -261,16 +281,19 @@ export default function DashboardPage() {
                 ? 'No permits match your current filters.'
                 : 'Get started by creating your first permit.'}
             </p>
-            {!searchQuery && statusFilter === 'All' && (
-              <button
-                onClick={() => setShowNewModal(true)}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Create Permit
-              </button>
-            )}
-          </div>
+              {!searchQuery && statusFilter === 'All' && (
+                <button
+                  onClick={() => (isSubscribed ? setShowNewModal(true) : router.push('/pricing'))}
+                  title={isSubscribed ? undefined : 'Upgrade to add permits'}
+                  className={`btn-primary inline-flex items-center gap-2 ${
+                    isSubscribed ? '' : 'opacity-60 cursor-not-allowed'
+                  }`}
+                >
+                  <Plus className="w-5 h-5" />
+                  Add New Permit
+                </button>
+              )}
+            </div>
         )}
       </main>
 

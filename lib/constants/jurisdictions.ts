@@ -13,10 +13,10 @@ export interface TexasJurisdiction {
 export const TEXAS_JURISDICTIONS: TexasJurisdiction[] = [
   {
     city: 'Houston',
-    department: 'Houston Permitting Center',
-    portalUrl: 'https://www.houstonpermittingcenter.org/',
+    department: 'Houston Permitting Center (CIVICS)',
+    portalUrl: 'https://permits.houstontx.gov/',
     phone: '(832) 394-8880',
-    notes: 'Apply online via the Houston Permitting Center portal.',
+    notes: 'Apply online via the City of Houston CIVICS permit portal at permits.houstontx.gov.',
   },
   {
     city: 'Dallas',

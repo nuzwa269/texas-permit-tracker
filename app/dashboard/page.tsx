@@ -8,6 +8,7 @@ import { getPermits } from '@/lib/supabase/permits';
 import { PermitCard } from '@/components/permits/PermitCard';
 import { NewPermitModal } from '@/components/permits/NewPermitModal';
 import { PermitDetailModal } from '@/components/permits/PermitDetailModal';
+import { JurisdictionPortalDropdown } from '@/components/permits/JurisdictionPortalDropdown';
 import { getExpirationStatus } from '@/lib/utils/date';
 import type { Permit, PermitStatus } from '@/types/permit';
 
@@ -113,20 +114,24 @@ export default function DashboardPage() {
       {/* ── Header ── */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-navy-900">Texas Permit Tracker</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Manage your building permits across Texas
               </p>
             </div>
-            <button
-              onClick={() => setShowNewModal(true)}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              New Permit
-            </button>
+            {/* Header actions */}
+            <div className="flex items-center gap-3 shrink-0">
+              <JurisdictionPortalDropdown />
+              <button
+                onClick={() => setShowNewModal(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                New Permit
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -210,7 +215,6 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {activePermits.map((permit) => {
                 const exp = getExpirationStatus(permit.expiration_date);
-                // 🔴 Red ring when expiring in < 30 days
                 const isUrgent = exp.isCritical && !exp.isExpired;
                 return (
                   <div

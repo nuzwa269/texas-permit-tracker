@@ -160,7 +160,6 @@ export default function DashboardPage() {
               <Zap className="w-5 h-5 text-amber-600 shrink-0" />
               <p className="text-sm font-medium text-amber-800">
                 You&apos;re in Trial Mode. Upgrade to unlock full access.
-                <span className="sr-only"> Current subscription status: {subscriptionStatus}.</span>
               </p>
             </div>
             <a

@@ -46,7 +46,7 @@ export function PermitDetailModal({
     try {
       const updated = await updatePermit(permit.id, { status: newStatus });
       onStatusChanged(updated);
-    } catch (err: unknown) {
+    } catch (err) {
       // Roll back on failure
       setOptimisticStatus(previousStatus);
       setStatusError(
